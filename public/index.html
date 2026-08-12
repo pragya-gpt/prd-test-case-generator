@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PRD → Test Cases</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="topbar-mark">
+      <span class="mark-bracket">[</span><span class="mark-text">QA</span><span class="mark-bracket">]</span>
+    </div>
+    <div class="topbar-title">
+      <h1>Test Case Generator</h1>
+      <p>PRD in. Reviewable coverage out.</p>
+    </div>
+    <div class="topbar-status" id="statusPill">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">Idle</span>
+    </div>
+  </header>
+
+  <main class="layout">
+
+    <section class="panel panel-input">
+      <div class="panel-label">
+        <span class="panel-index">01</span>
+        <span>Input — PRD or User Story</span>
+      </div>
+
+      <textarea
+        id="prdInput"
+        placeholder="Paste your PRD, user story, or feature spec here.
+
+Example:
+'As a registered user who has forgotten their password, I want to reset it via an emailed link, so that I can regain access securely...'"
+      ></textarea>
+
+      <div class="input-footer">
+        <button class="btn-sample" id="loadSampleBtn" type="button">Load sample PRD</button>
+        <span class="char-count" id="charCount">0 characters</span>
+      </div>
+
+      <button class="btn-generate" id="generateBtn" type="button">
+        <span id="generateBtnText">Generate test cases</span>
+      </button>
+
+      <p class="error-msg" id="errorMsg" hidden></p>
+    </section>
+
+    <section class="panel panel-output">
+      <div class="panel-label">
+        <span class="panel-index">02</span>
+        <span>Coverage</span>
+        <div class="export-buttons" id="exportButtons" hidden>
+          <button class="btn-export" id="exportMdBtn" type="button">.md</button>
+          <button class="btn-export" id="exportCsvBtn" type="button">.csv</button>
+        </div>
+      </div>
+
+      <div class="output-body" id="outputBody">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-glyph">◇</div>
+          <p>No test cases generated yet.</p>
+          <p class="empty-sub">Paste a PRD on the left and run a generation to see categorized, prioritized coverage here.</p>
+        </div>
+
+        <div class="loading-state" id="loadingState" hidden>
+          <div class="loading-bar"><div class="loading-fill"></div></div>
+          <p id="loadingText">Reading requirements…</p>
+        </div>
+
+        <div class="results" id="results" hidden>
+          <div class="summary-strip" id="summaryStrip"></div>
+          <div class="results-list" id="resultsList"></div>
+          <div class="coverage-notes" id="coverageNotes"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <span>Built with Gemini · runs entirely on your own free API key</span>
+  </footer>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

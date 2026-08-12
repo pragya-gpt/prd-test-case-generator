@@ -1,0 +1,19 @@
+{
+  "name": "prd-test-case-generator",
+  "version": "1.0.0",
+  "description": "Generates structured QA test cases from a PRD or user story using Google's free Gemini API — deployed on Netlify",
+  "scripts": {
+    "cli": "ts-node src/index.ts",
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "ts-node": "^10.9.2",
+    "@types/node": "^22.9.0",
+    "@netlify/functions": "^2.8.2",
+    "netlify-cli": "^17.38.0"
+  }
+}

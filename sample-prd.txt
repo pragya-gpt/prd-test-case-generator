@@ -1,0 +1,16 @@
+Feature: Password Reset via Email
+
+As a registered user who has forgotten their password,
+I want to reset my password using a link sent to my registered email,
+So that I can regain access to my account securely.
+
+Requirements:
+1. User enters their registered email on the "Forgot Password" page.
+2. System sends a password reset link to the email if an account exists for it.
+   - For security, the UI shows the same generic confirmation message ("If an account exists, a reset link has been sent") regardless of whether the email is registered or not.
+3. The reset link is valid for 30 minutes from the time it is generated.
+4. Clicking the link takes the user to a "Set New Password" page.
+5. The new password must be at least 8 characters, include at least one number and one special character.
+6. Once the password is successfully reset, all existing sessions for that user are invalidated and the user must log in again.
+7. If the link is expired or already used, the user sees an error message with an option to request a new link.
+8. A user can request a new reset link at most 3 times within a 1-hour window (rate limiting to prevent abuse).
