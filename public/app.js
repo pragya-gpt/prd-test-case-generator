@@ -1,3 +1,8 @@
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+
 const SAMPLE_PRD = `Feature: Password Reset via Email
 
 As a registered user who has forgotten their password,
@@ -83,33 +88,65 @@ fileInput.addEventListener("change", async () => {
   const file = fileInput.files[0];
   if (!file) return;
 
-  const allowedExtensions = [".txt", ".md"];
-  const isAllowed = allowedExtensions.some((ext) => file.name.toLowerCase().endsWith(ext));
+  const nameLower = file.name.toLowerCase();
+  const isPdf = nameLower.endsWith(".pdf");
+  const isText = nameLower.endsWith(".txt") || nameLower.endsWith(".md");
 
-  if (!isAllowed) {
-    showError("Please upload a .txt or .md file.");
+  if (!isPdf && !isText) {
+    showError("Please upload a .txt, .md, or .pdf file.");
     fileInput.value = "";
     return;
   }
 
-  if (file.size > 500 * 1024) {
-    showError("File is too large. Please upload a file under 500KB.");
+  if (file.size > 5 * 1024 * 1024) {
+    showError("File is too large. Please upload a file under 5MB.");
     fileInput.value = "";
     return;
   }
+
+  hideError();
 
   try {
-    const text = await file.text();
+    let text;
+    if (isPdf) {
+      showFileName(file.name, "Extracting text…");
+      text = await extractPdfText(file);
+      if (!text || text.trim().length < 10) {
+        showError("Couldn't extract readable text from this PDF — it may be scanned/image-based. Try pasting the text manually instead.");
+        hideFileName();
+        fileInput.value = "";
+        return;
+      }
+    } else {
+      text = await file.text();
+    }
+
     prdInput.value = text;
     updateCharCount();
-    hideError();
     showFileName(file.name);
   } catch (err) {
+    console.error(err);
     showError("Could not read that file. Try pasting the text instead.");
+    hideFileName();
   }
 
   fileInput.value = ""; // allow re-uploading the same file name later
 });
+
+async function extractPdfText(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = "";
+
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+    const pageText = content.items.map((item) => item.str).join(" ");
+    fullText += pageText + "\n\n";
+  }
+
+  return fullText.trim();
+}
 
 clearBtn.addEventListener("click", () => {
   prdInput.value = "";
@@ -123,8 +160,9 @@ function updateCharCount() {
   charCount.textContent = `${prdInput.value.length} characters`;
 }
 
-function showFileName(name) {
-  fileName.innerHTML = `${escapeHtml(name)}<button type="button" aria-label="Remove file">✕</button>`;
+function showFileName(name, statusLabel) {
+  const label = statusLabel ? ` — ${escapeHtml(statusLabel)}` : "";
+  fileName.innerHTML = `${escapeHtml(name)}${label}<button type="button" aria-label="Remove file">✕</button>`;
   fileName.hidden = false;
   fileName.querySelector("button").addEventListener("click", () => {
     prdInput.value = "";
