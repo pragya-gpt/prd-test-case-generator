@@ -61,6 +61,7 @@ const exportCsvBtn = el("exportCsvBtn");
 
 let lastResponse = null;
 let loadingInterval = null;
+let activeFilter = "all";
 
 prdInput.addEventListener("input", () => {
   charCount.textContent = `${prdInput.value.length} characters`;
@@ -157,33 +158,56 @@ function renderResults(data) {
   loadingState.hidden = true;
   results.hidden = false;
   exportButtons.hidden = false;
+  activeFilter = "all";
 
-  const byCategory = {};
-  for (const tc of data.testCases) {
-    if (!byCategory[tc.category]) byCategory[tc.category] = [];
-    byCategory[tc.category].push(tc);
-  }
+  renderSummaryChips(data);
+  renderList(data);
+
+  coverageNotes.innerHTML = `<strong>Coverage notes</strong>${escapeHtml(data.coverageNotes || "")}`;
+}
+
+function renderSummaryChips(data) {
+  const byCategory = groupByCategory(data.testCases);
 
   summaryStrip.innerHTML = "";
-  const totalChip = document.createElement("span");
-  totalChip.className = "summary-chip";
+
+  const totalChip = document.createElement("button");
+  totalChip.type = "button";
+  totalChip.className = "summary-chip total-chip" + (activeFilter === "all" ? " active" : "");
   totalChip.style.background = "#1C2430";
   totalChip.style.color = "#F7F6F2";
   totalChip.textContent = `${data.testCases.length} total`;
+  totalChip.addEventListener("click", () => setFilter("all"));
   summaryStrip.appendChild(totalChip);
 
   for (const [cat, cases] of Object.entries(byCategory)) {
     const style = CATEGORY_STYLES[cat] || CATEGORY_STYLES.edge;
-    const chip = document.createElement("span");
-    chip.className = "summary-chip";
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "summary-chip" + (activeFilter === cat ? " active" : "");
     chip.style.background = style.soft;
     chip.style.color = style.color;
     chip.textContent = `${cases.length} ${style.label.toLowerCase()}`;
+    chip.addEventListener("click", () => setFilter(cat));
     summaryStrip.appendChild(chip);
   }
+}
 
+function setFilter(filter) {
+  activeFilter = filter;
+  renderSummaryChips(lastResponse);
+  renderList(lastResponse);
+}
+
+function renderList(data) {
+  const byCategory = groupByCategory(data.testCases);
   resultsList.innerHTML = "";
-  for (const [cat, cases] of Object.entries(byCategory)) {
+
+  const categoriesToShow = activeFilter === "all" ? Object.keys(byCategory) : [activeFilter];
+
+  for (const cat of categoriesToShow) {
+    const cases = byCategory[cat];
+    if (!cases) continue;
     const style = CATEGORY_STYLES[cat] || CATEGORY_STYLES.edge;
 
     const heading = document.createElement("div");
@@ -192,12 +216,21 @@ function renderResults(data) {
     heading.innerHTML = `<span class="category-dot" style="background:${style.color}"></span>${style.label} (${cases.length})`;
     resultsList.appendChild(heading);
 
-    for (const tc of cases) {
-      resultsList.appendChild(renderCard(tc, style));
-    }
+    cases.forEach((tc, i) => {
+      const card = renderCard(tc, style);
+      card.style.animationDelay = `${Math.min(i * 30, 300)}ms`;
+      resultsList.appendChild(card);
+    });
   }
+}
 
-  coverageNotes.innerHTML = `<strong>Coverage notes</strong>${escapeHtml(data.coverageNotes || "")}`;
+function groupByCategory(testCases) {
+  const byCategory = {};
+  for (const tc of testCases) {
+    if (!byCategory[tc.category]) byCategory[tc.category] = [];
+    byCategory[tc.category].push(tc);
+  }
+  return byCategory;
 }
 
 function renderCard(tc, style) {

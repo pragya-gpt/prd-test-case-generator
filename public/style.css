@@ -18,6 +18,11 @@
 
 * { box-sizing: border-box; }
 
+/* Critical: browsers' default [hidden] rule is low-priority and gets overridden
+   by any author display rule on the same element (e.g. .empty-state { display:flex }).
+   This makes [hidden] authoritative again. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--paper);
@@ -294,12 +299,47 @@ body {
   padding: 5px 10px;
   border-radius: 6px;
   font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+  opacity: 0.55;
 }
+
+.summary-chip:hover { transform: translateY(-1px); }
+
+.summary-chip.active {
+  opacity: 1;
+  box-shadow: 0 0 0 2px currentColor inset;
+}
+
+.summary-chip.total-chip {
+  cursor: default;
+  opacity: 1;
+}
+.summary-chip.total-chip:hover { transform: none; }
 
 .results-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.results {
+  animation: resultsIn 0.3s ease;
+}
+
+@keyframes resultsIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.empty-glyph {
+  animation: floatGlyph 2.4s ease-in-out infinite;
+}
+
+@keyframes floatGlyph {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(8deg); }
 }
 
 .category-heading {
@@ -329,6 +369,19 @@ body {
   padding: 12px 14px;
   margin-bottom: 8px;
   background: var(--paper);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  animation: cardIn 0.35s ease backwards;
+}
+
+.tc-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(28, 36, 48, 0.08);
+  border-color: #C8C4B8;
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .tc-head {
