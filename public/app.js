@@ -44,6 +44,10 @@ const charCount = el("charCount");
 const generateBtn = el("generateBtn");
 const generateBtnText = el("generateBtnText");
 const loadSampleBtn = el("loadSampleBtn");
+const uploadBtn = el("uploadBtn");
+const clearBtn = el("clearBtn");
+const fileInput = el("fileInput");
+const fileName = el("fileName");
 const errorMsg = el("errorMsg");
 const statusDot = el("statusDot");
 const statusText = el("statusText");
@@ -56,22 +60,83 @@ const summaryStrip = el("summaryStrip");
 const resultsList = el("resultsList");
 const coverageNotes = el("coverageNotes");
 const exportButtons = el("exportButtons");
-const exportMdBtn = el("exportMdBtn");
 const exportCsvBtn = el("exportCsvBtn");
 
 let lastResponse = null;
 let loadingInterval = null;
 let activeFilter = "all";
 
-prdInput.addEventListener("input", () => {
-  charCount.textContent = `${prdInput.value.length} characters`;
-});
+prdInput.addEventListener("input", updateCharCount);
 
 loadSampleBtn.addEventListener("click", () => {
   prdInput.value = SAMPLE_PRD;
-  charCount.textContent = `${prdInput.value.length} characters`;
+  updateCharCount();
+  hideFileName();
   prdInput.focus();
 });
+
+uploadBtn.addEventListener("click", () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener("change", async () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  const allowedExtensions = [".txt", ".md"];
+  const isAllowed = allowedExtensions.some((ext) => file.name.toLowerCase().endsWith(ext));
+
+  if (!isAllowed) {
+    showError("Please upload a .txt or .md file.");
+    fileInput.value = "";
+    return;
+  }
+
+  if (file.size > 500 * 1024) {
+    showError("File is too large. Please upload a file under 500KB.");
+    fileInput.value = "";
+    return;
+  }
+
+  try {
+    const text = await file.text();
+    prdInput.value = text;
+    updateCharCount();
+    hideError();
+    showFileName(file.name);
+  } catch (err) {
+    showError("Could not read that file. Try pasting the text instead.");
+  }
+
+  fileInput.value = ""; // allow re-uploading the same file name later
+});
+
+clearBtn.addEventListener("click", () => {
+  prdInput.value = "";
+  updateCharCount();
+  hideFileName();
+  hideError();
+  prdInput.focus();
+});
+
+function updateCharCount() {
+  charCount.textContent = `${prdInput.value.length} characters`;
+}
+
+function showFileName(name) {
+  fileName.innerHTML = `${escapeHtml(name)}<button type="button" aria-label="Remove file">✕</button>`;
+  fileName.hidden = false;
+  fileName.querySelector("button").addEventListener("click", () => {
+    prdInput.value = "";
+    updateCharCount();
+    hideFileName();
+  });
+}
+
+function hideFileName() {
+  fileName.hidden = true;
+  fileName.innerHTML = "";
+}
 
 generateBtn.addEventListener("click", generate);
 
@@ -261,20 +326,20 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-async function exportAs(format) {
+async function exportCSV() {
   if (!lastResponse) return;
   try {
     const res = await fetch("/api/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: lastResponse, format, sourceName: "PRD" }),
+      body: JSON.stringify({ data: lastResponse, format: "csv", sourceName: "PRD" }),
     });
     if (!res.ok) throw new Error("Export failed.");
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = format === "markdown" ? "test-cases.md" : "test-cases.csv";
+    a.download = "test-cases.csv";
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -284,5 +349,4 @@ async function exportAs(format) {
   }
 }
 
-exportMdBtn.addEventListener("click", () => exportAs("markdown"));
-exportCsvBtn.addEventListener("click", () => exportAs("csv"));
+exportCsvBtn.addEventListener("click", exportCSV);

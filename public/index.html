@@ -43,9 +43,18 @@ Example:
       ></textarea>
 
       <div class="input-footer">
-        <button class="btn-sample" id="loadSampleBtn" type="button">Load sample PRD</button>
+        <div class="footer-actions">
+          <button class="btn-sample" id="loadSampleBtn" type="button">Load sample PRD</button>
+          <span class="footer-sep">·</span>
+          <button class="btn-sample" id="uploadBtn" type="button">Upload file</button>
+          <span class="footer-sep">·</span>
+          <button class="btn-sample btn-clear" id="clearBtn" type="button">Clear</button>
+        </div>
         <span class="char-count" id="charCount">0 characters</span>
       </div>
+      <input type="file" id="fileInput" accept=".txt,.md" hidden />
+
+      <p class="file-name" id="fileName" hidden></p>
 
       <button class="btn-generate" id="generateBtn" type="button">
         <span id="generateBtnText">Generate test cases</span>
@@ -59,7 +68,6 @@ Example:
         <span class="panel-index">02</span>
         <span>Coverage</span>
         <div class="export-buttons" id="exportButtons" hidden>
-          <button class="btn-export" id="exportMdBtn" type="button">.md</button>
           <button class="btn-export" id="exportCsvBtn" type="button">.csv</button>
         </div>
       </div>
