@@ -137,15 +137,128 @@ async function extractPdfText(file) {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   let fullText = "";
+  let containsTableLikeContent = false;
 
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
     const page = await pdf.getPage(pageNum);
     const content = await page.getTextContent();
-    const pageText = content.items.map((item) => item.str).join(" ");
-    fullText += pageText + "\n\n";
+    const { lines, hadColumnGaps } = reconstructPageLines(content.items);
+    const processedLines = convertTableBlocksToSentences(lines);
+    if (hadColumnGaps) containsTableLikeContent = true;
+    fullText += processedLines.join("\n") + "\n\n";
   }
 
-  return fullText.trim();
+  fullText = fullText.trim();
+
+  if (containsTableLikeContent) {
+    const note =
+      "[Note: This document was extracted from a PDF. Sections starting with 'TABLE (columns: ...)' " +
+      "followed by bullet lines describe tabular data from the original document. Each bullet gives one " +
+      "row's label followed by that row's value for every column — read these as structured table data, " +
+      "not as prose.]\n\n";
+    fullText = note + fullText;
+  }
+
+  return fullText;
+}
+
+function reconstructPageLines(items) {
+  const Y_TOLERANCE = 3; // px — items within this range are treated as the same visual row
+  const COLUMN_GAP_MULTIPLIER = 4; // gap wider than this many char-widths implies a new table column
+  const WORD_GAP_MULTIPLIER = 0.6; // smaller gaps just mean a normal space between words
+
+  const rows = [];
+  let hadColumnGaps = false;
+
+  for (const item of items) {
+    if (!item.str || !item.str.trim()) continue;
+    const y = item.transform[5];
+    let row = rows.find((r) => Math.abs(r.y - y) <= Y_TOLERANCE);
+    if (!row) {
+      row = { y, items: [] };
+      rows.push(row);
+    }
+    row.items.push(item);
+  }
+
+  rows.sort((a, b) => b.y - a.y); // PDF y increases upward; sort top-to-bottom
+
+  const lines = rows.map((row) => {
+    row.items.sort((a, b) => a.transform[4] - b.transform[4]);
+
+    const cells = [];
+    let currentCell = "";
+    let prevEndX = null;
+
+    for (const item of row.items) {
+      const x = item.transform[4];
+      const charWidth = item.width / Math.max(item.str.length, 1) || 4;
+
+      if (prevEndX !== null) {
+        const gap = x - prevEndX;
+        if (gap > charWidth * COLUMN_GAP_MULTIPLIER) {
+          cells.push(currentCell.trim());
+          currentCell = "";
+          hadColumnGaps = true;
+        } else if (gap > charWidth * WORD_GAP_MULTIPLIER) {
+          currentCell += " ";
+        }
+      }
+
+      currentCell += item.str;
+      prevEndX = x + item.width;
+    }
+    if (currentCell.trim()) cells.push(currentCell.trim());
+
+    return cells;
+  });
+
+  return { lines: lines.filter((cells) => cells.length > 0), hadColumnGaps };
+}
+
+// Detects runs of consecutive rows that share the same column count (a strong signal of a real
+// table) and converts them into explicit "row label: column = value" statements, pairing the
+// first row (treated as the header) with every subsequent data row.
+function convertTableBlocksToSentences(lines) {
+  const output = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const cells = lines[i];
+
+    if (cells.length >= 2) {
+      let j = i + 1;
+      const block = [cells];
+      while (j < lines.length && lines[j].length === cells.length) {
+        block.push(lines[j]);
+        j++;
+      }
+
+      if (block.length >= 3) {
+        // Need header + at least 2 data rows to be confident this is a real table, not a coincidence
+        const header = block[0];
+        const dataRows = block.slice(1);
+
+        output.push(`TABLE (columns: ${header.join(", ")}):`);
+        for (const row of dataRows) {
+          const rowLabel = row[0];
+          const pairs = [];
+          for (let k = 1; k < header.length; k++) {
+            pairs.push(`${header[k]} = ${row[k] ?? "—"}`);
+          }
+          output.push(`- ${rowLabel}: ${pairs.join("; ")}`);
+        }
+
+        i = j;
+        continue;
+      }
+    }
+
+    output.push(cells.join(" "));
+    i++;
+  }
+
+  return output;
 }
 
 clearBtn.addEventListener("click", () => {
